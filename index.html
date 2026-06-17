@@ -102,13 +102,13 @@
     <div class="card">
       <label class="label">Your name</label>
       <input type="text" id="player-name" placeholder="Enter your name" maxlength="20" />
-      <button class="btn btn-primary" onclick="goHost()">Host a new quiz</button>
-      <div style="display:flex;align-items:center;gap:8px;margin:4px 0 10px">
+      <button id="host-btn" class="btn btn-primary" onclick="goHost()">Host a new quiz</button>
+      <div id="or-divider" style="display:flex;align-items:center;gap:8px;margin:4px 0 10px">
         <div style="flex:1;height:1px;background:#eee"></div>
         <span style="font-size:12px;color:#aaa">or join existing</span>
         <div style="flex:1;height:1px;background:#eee"></div>
       </div>
-      <label class="label">Room code</label>
+      <label class="label" id="join-label">Room code</label>
       <input type="text" id="join-code" placeholder="e.g. QUIZ7" maxlength="6" style="text-transform:uppercase" />
       <button class="btn btn-secondary" onclick="goJoin()">Join room</button>
     </div>
@@ -643,11 +643,16 @@ window.leaveRoom = function() {
   showScreen('screen-home');
 };
 
-// Auto-join from URL param
+// Auto-join from URL param — hide host option if arriving via QR code
 const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get('room');
 if (roomParam) {
-  document.getElementById('join-code').value = roomParam;
+  document.getElementById('join-code').value = roomParam.toUpperCase();
+  // Hide host button and show join-only UI
+  document.getElementById('host-btn').style.display = 'none';
+  document.getElementById('or-divider').style.display = 'none';
+  document.getElementById('join-label').textContent = 'Joining room ' + roomParam.toUpperCase();
+  document.getElementById('join-code').style.display = 'none';
 }
 </script>
 </body>

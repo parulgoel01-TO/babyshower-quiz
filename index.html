@@ -375,7 +375,7 @@ window.createRoom = async function() {
     host: G.playerName,
     created: Date.now()
   });
-  await set(ref(db, `rooms/${code}/players/${G.playerName}`), { score:0, correct:0, total:0, avgTime:0, joined:Date.now() });
+  // Host is not registered as a player — host manages quiz only
   renderLobby(code, true);
   showScreen('screen-lobby');
   listenLobbyPlayers(code);
@@ -399,7 +399,7 @@ function listenLobbyPlayers(code) {
     el.innerHTML = '';
     Object.keys(players).forEach(name => {
       const chip = document.createElement('div');
-      chip.className = 'player-chip' + (name === G.playerName && G.isHost ? ' host' : '');
+      chip.className = 'player-chip';
       chip.textContent = name;
       el.appendChild(chip);
     });
@@ -433,8 +433,11 @@ function clearListeners() {
 
 window.startQuiz = async function() {
   await update(ref(db, `rooms/${G.roomCode}`), { status: 'playing', currentQ: 0, phase: 'question' });
-  loadQuestion();
-  showScreen('screen-question');
+  // Host monitors from between screen — does not answer questions
+  showScreen('screen-between');
+  document.getElementById('between-list').innerHTML = '<p style="color:#888;text-align:center;padding:1rem">Waiting for players to answer…</p>';
+  document.getElementById('host-next').style.display = 'none';
+  document.getElementById('guest-between-wait').style.display = 'none';
   listenForPhase(G.roomCode);
 };
 
@@ -566,7 +569,9 @@ function showFeedback(correct, pts, time, correctAns) {
 
 async function showBetween() {
   const snap = await get(ref(db, `rooms/${G.roomCode}/players`));
-  const players = snap.val() || {};
+  const allPlayers = snap.val() || {};
+  const hostName = (await get(ref(db, `rooms/${G.roomCode}/host`))).val();
+  const players = Object.fromEntries(Object.entries(allPlayers).filter(([n]) => n !== hostName));
   const sorted = Object.entries(players).sort((a,b) => b[1].score - a[1].score);
   const list = document.getElementById('between-list');
   list.innerHTML = '';
@@ -580,6 +585,10 @@ async function showBetween() {
   const isLast = G.currentQ >= G.questions.length - 1;
   document.getElementById('host-next').style.display = G.isHost ? 'block' : 'none';
   document.getElementById('guest-between-wait').style.display = G.isHost ? 'none' : 'block';
+  if (G.isHost) {
+    const h2 = document.querySelector('#screen-between h2');
+    if (h2) h2.textContent = 'Live scores';
+  }
   if (G.isHost) {
     const btn = document.getElementById('next-btn');
     btn.textContent = isLast ? 'See final results' : 'Next question';
@@ -602,7 +611,10 @@ window.hostNext = async function() {
 async function showFinal() {
   clearListeners();
   const snap = await get(ref(db, `rooms/${G.roomCode}/players`));
-  const players = snap.val() || {};
+  const allPlayers = snap.val() || {};
+  const hostSnap = await get(ref(db, `rooms/${G.roomCode}/host`));
+  const hostName = hostSnap.val();
+  const players = Object.fromEntries(Object.entries(allPlayers).filter(([n]) => n !== hostName));
   const sorted = Object.entries(players).sort((a,b) => b[1].score - a[1].score);
   const winner = sorted[0];
   const banner = document.getElementById('winner-banner');
